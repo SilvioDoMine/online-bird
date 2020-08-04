@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Online</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11/dist/vue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="rootVue" v-on:keydown="keyboardListener">
+        <canvas ref="game" id="canvasGame" width="409" height="720"></canvas>
+    </div>
+    
+    <script>
+        let xDocument = document;
+
+        let vm = new Vue({
+            el: "#rootVue",
+            data: {
+                page: 'pageLobby',
+            },
+            methods: {
+                initGame() {
+                    this.initNetwork()
+                    xDocument.addEventListener('keypress', this.keyboardListener)
+                    this.canvas.addEventListener('touchstart', this.keyboardListener)
+
+                    requestAnimationFrame(this.drawGame)
+                },
+                initNetwork() {
+                    this.socket.on('matchStatus', (data) => {
+                        this.gameSession = data
+                        console.log(data)
+                    })
+
+                    this.socket.on('disconnect', () => {
+                        this.page = 'pageLobby'
+                    })
+                },
+                keyboardListener() {
+                    if (this.page == 'pageLobby') {
+                        this.socket.emit('findMatch', 'match')
+                        this.page = 'pageMatchmaking'
+                    } else if (this.page == 'pageGame') {
+                        this.page = 'pageLobby'
+                    }
+                },
+                drawGame() {
+                    
+                    let page = this[this.page]
+
+                    this.context.fillStyle = "#FFFFFF"
+                    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+
+                    if (page) {
+                        page();
+                    } else {
+                        console.log(`> Page ${this.page} not found (There is no function with that name).`)
+                    }
+
+                    requestAnimationFrame(this.drawGame)
+                },
+                pageLobby() {
+                    this.context.fillStyle = "#222222"
+                    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+
+                    this.context.fillStyle = "#FFFFFF"
+                    this.context.font = "30px Arial"
+
+                    if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                        this.context.fillText("TOUCH TO START", this.canvas.height / 9, this.canvas.height/2)
+                    } else {
+                        this.context.fillText("PRESS SPACE TO START", this.canvas.height / 35, this.canvas.height/2)
+                    }
+                },
+                pageMatchmaking() {
+                    this.context.fillStyle = "#CCCCCC"
+                    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+                },
+                pageGame() {
+                    this.context.fillStyle = "#F7D1D1"
+                    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+                },
+            },
+            created() {
+                this.socket = io()
+            },
+            mounted() {
+                this.canvas = this.$refs.game
+                this.canvas.style = "border: 1px solid #000"
+                this.context = this.canvas.getContext("2d")
+                
+                this.initGame()
+            }
+        })
+    </script>
+</body>
+</html>
